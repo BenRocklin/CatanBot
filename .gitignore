@@ -1,1 +1,3 @@
 catanEnv/
+.idea/
+*.pyc
