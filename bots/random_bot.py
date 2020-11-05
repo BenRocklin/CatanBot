@@ -36,7 +36,8 @@ class RandomBot:
 
         if not rolled:
             # we haven't rolled, must roll or play dev card first
-            actions.extend("ROLL")
+            # Changed to append from extend, otherwise it says "invalid action: O"
+            actions.append("ROLL")
         else:
             # if player has rolled, doesn't have to do anything else, can end turn
             actions.append("E")

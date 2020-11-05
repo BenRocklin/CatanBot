@@ -25,7 +25,7 @@ def continue_play(game, order, players):
             print(player_name, "playing turn")
             while True:
                 action = player.play_turn(game, rolled, card_played, building)
-                if action == "ROLL":
+                if action[0] == "ROLL":
                     roll = game.get_roll()
                     game.add_yield_for_roll(roll)
                     print("Rolled a", roll)
@@ -90,10 +90,14 @@ def play_game(player_num, bots_types):
     for bot_id in range(len(bots_types)):
         bot_type = bots_types[bot_id]
         bot_name = bot_type + str(bot_id)
-        if bot_type == "Random":
-            players[bot_name] = RandomBot(game.board, index, player_name)
+        if bot_type == "Random" or bot_type == "Random2":
+            # players[bot_name] = RandomBot(game.board, index, player_name)
+            # Assuming player num = 0 because otherwise, player_name is undefined. 
+            players[bot_name] = RandomBot(game.board, index, "player_name")
         order.append(bot_name)
         index += 1
     random.shuffle(order)
     begin_play(game, order, players)
     continue_play(game, order, players)
+
+
