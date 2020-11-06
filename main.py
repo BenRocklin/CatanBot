@@ -12,7 +12,7 @@ def main():
     red_player = "Random"
     if red_player not in player_types:
         sys.exit("Improper player type for player red, exiting.")
-    blue_player = "Human"
+    blue_player = "Random"
     if blue_player not in player_types:
         sys.exit("Improper player type for player red, exiting.")
     play_game([red_player, blue_player])

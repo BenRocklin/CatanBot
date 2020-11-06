@@ -69,26 +69,26 @@ class RandomBot:
 
         if not rolled:
             # we haven't rolled, must roll or play dev card first
-            actions.append("ROLL")
+            actions.append(["ROLL"])
         else:
             # if player has rolled, doesn't have to do anything else, can end turn, can also now build
-            actions.append("E")
+            actions.append(["E"])
             if not building:
                 # don't have to roll, can opt to trade (have random bot not trade at all yet)
                 pass
             if player_cards.count(CatanCards.CARD_BRICK) >= 1 and player_cards.count(CatanCards.CARD_WOOD) >= 1:
                 # append all road building locations
                 for road in board_parser.get_road_locations(game.board, player_obj, self.player_id):
-                    actions.append("R" + str(road))
+                    actions.append(["R", road])
             if player_cards.count(CatanCards.CARD_BRICK) >= 1 and player_cards.count(CatanCards.CARD_WOOD) >= 1 and\
                player_cards.count(CatanCards.CARD_WHEAT) >= 1 and player_cards.count(CatanCards.CARD_SHEEP) >= 1:
                 # append all settlement locations
                 for settlement in board_parser.get_settlement_locations(game.board, self.player_id):
-                    actions.append("S" + str(settlement))
+                    actions.append(["S", settlement])
             if player_cards.count(CatanCards.CARD_WHEAT) >= 2 and player_cards.count(CatanCards.CARD_ORE) >= 3:
                 # append all city locations
                 for city in board_parser.get_city_locations(game.board, self.player_id):
-                    actions.append("C" + str(city))
+                    actions.append(["C", city])
 
             # for now, don't allow dev card purchases
             # if player_cards.count(CatanCards.CARD_WHEAT) >= 1 and player_cards.count(CatanCards.CARD_ORE) >= 1 and\

@@ -1,12 +1,61 @@
 from bots.random_bot import RandomBot
 from user_play import User
 
-from PyCatan import CatanBoard, CatanCards, CatanGame, CatanPlayer, CatanStatuses
+from PyCatan import CatanBoard, CatanBuilding, CatanCards, CatanGame, CatanPlayer, CatanStatuses
 
 """
 Catan controller to maintain game. All code should be RL-agnostic (that is, all code related to states/actions/models
 of the game should be handled within the players!).
 """
+
+def add_yield_for_roll(game, roll):
+    """
+    Bug-free version to add dice roll yields.
+
+    :param game:
+    :param roll:
+    :return:
+    """
+    board = game.board
+    for r in range(len(board.points)):
+        for i in range(len(board.points[r])):
+
+            if board.points[r][i] != None:
+
+                hex_indexes = board.get_hexes_for_point(r, i)
+
+                # checks if any hexes have the right number
+                for num in hex_indexes:
+
+                    # makes sure the robber isn't there
+                    if board.robber[0] == num[0] and board.robber[1] == num[1]:
+
+                        # skips this hex
+                        continue
+
+                    try:
+                        if board.hex_nums[num[0]][num[1]] == roll:
+
+                            # adds the card to the player's inventory
+                            owner = board.points[r][i].owner
+
+                            # gets the card type
+                            hex_type = board.hexes[num[0]][num[1]]
+                            card_type = CatanBoard.get_card_from_hex(hex_type)
+
+                            # adds two if it is a city
+                            if board.points[r][i].type == CatanBuilding.BUILDING_CITY:
+                                game.players[owner].add_cards([
+                                    card_type,
+                                    card_type
+                                ])
+
+                            else:
+                                game.players[owner].add_cards([
+                                    card_type
+                                ])
+                    except:
+                        print("INVALID HEX, SKIPPING")
 
 def begin_play(game, order, players, logfile):
     """
@@ -53,28 +102,30 @@ def continue_play(game, order, players, logfile):
                 # let player continue playing turn until they decide to end it
                 action = player.get_turn_action(game, rolled, card_played, building, logfile)
                 retval = 2 # return value from game performing given action for debugging purposes
-                if action == "ROLL":
+                if action[0] == "ROLL":
                     # if the player rolled, get a random number (prevent 7 for simplicity) and payout money
                     roll = game.get_roll()
                     while roll == 7:
                         roll = game.get_roll()
                     print("Rolled a", roll)
-                    game.add_yield_for_roll(roll)
+                    add_yield_for_roll(game, roll)
                     rolled = True
                 elif action[0] == 'R':
                     # building a road
-                    args = list(action[1:])
-                    retval = game.add_road(player.player, args[0], args[1])
+                    args = action[1]
+                    print(args)
+                    retval = game.add_road(player.player_id, args[0], args[1])
+                    print("ROAD BUILT")
                     building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 elif action[0] == 'S':
                     # building a settlement
-                    args = list(action[1:])
-                    retval = game.add_settlement(player.player, args[0], args[1])
+                    args = action[1]
+                    retval = game.add_settlement(player.player_id, args[0], args[1])
                     building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 elif action[0] == 'C':
                     # building a city
-                    args = list(action[1:])
-                    retval = game.add_city(args[0], args[1], player.player)
+                    args = action[1]
+                    retval = game.add_city(args[0], args[1], player.player_id)
                     building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 # elif action[0] == 'B':
                 #     # trade cards into bank (counts as building)
@@ -100,6 +151,15 @@ def play_game(player_types):
     """
     game = CatanGame(2)
     order = ["Red", "Blue"]
+
+    print(game.board.hex_nums)
+    print(game.board.points)
+    print(game.board.hexes)
+    for r in range(len(game.board.points)):
+        for i in range(len(game.board.points[r])):
+            print(r, i)
+            hex_indexes = game.board.get_hexes_for_point(r, i)
+            print(hex_indexes)
 
     index = 0
     players = {}

@@ -75,19 +75,19 @@ class User:
             # check the input to make sure it's a valid action and, if necessary, obtain additional input (i.e. locations)
             if action_input.lower() == "roll" and "ROLL" in possible_actions:
                 valid = True
-                action = "ROLL"
+                action = ["ROLL"]
             if (action_input.lower() == "end" or action_input.lower() == "e") and "END" in possible_actions:
                 valid = True
-                action = "E"
+                action = ["E"]
             if (action_input.lower() == "road" or action_input.lower() == "r") and "ROAD" in possible_actions:
                 valid = True
-                action = "R" + str(self.road_input(game))
+                action = ["R", self.road_input(game)]
             if (action_input.lower() == "settlement" or action_input.lower() == "s") and "SETTLEMENT" in possible_actions:
                 valid = True
-                action = "S" + str(self.settlement_input(game))
+                action = ["S", self.settlement_input(game)]
             if (action_input.lower() == "city" or action_input.lower() == "c") and "CITY" in possible_actions:
                 valid = True
-                action = "C" + str(self.city_input(game))
+                action = ["C", self.city_input(game)]
             print("INVALID ACTION INPUT:", action_input)
         return action
 
