@@ -1,134 +1,124 @@
-import random
-import csv
-from collections import defaultdict
 from bots.random_bot import RandomBot
 from user_play import User
 
 from PyCatan import CatanBoard, CatanCards, CatanGame, CatanPlayer, CatanStatuses
-settlements = []
-cities = []
-victory_points = defaultdict()
-resource_cards = [0] * 5
-rolled_on_turn = False
 
-def begin_play(game, order, players):
-    f = open('storage.csv', "w")
+"""
+Catan controller to maintain game. All code should be RL-agnostic (that is, all code related to states/actions/models
+of the game should be handled within the players!).
+"""
+
+def begin_play(game, order, players, logfile):
+    """
+    Handles initial input for the first two settlements for all players. For now, do not award cards placed
+    on initial settlement.
+
+    :param game: the CatanGame object instantiated earlier
+    :param order: the order in which the players play
+    :param players: dictionary containing all player objects implementing standard player API
+    :param logfile: file to log optional output in
+    """
+    # place first settlement and road for each player
     for player_name in order:
         player = players[player_name]
         print(player_name, "picking an initial settlement")
-        state = [[], cities, victory_points, resource_cards, rolled_on_turn]
-        location = player.pick_initial_location(game)
-        settlements.append([location, player])
-        action = "START"
-        reward = 1
-        victory_points[player] += reward
-        next_state = [settlements, cities, victory_points, resource_cards, rolled_on_turn]
-        f.write(state + "," + action + "," + reward + "," + next_state)
+        player.pick_initial_location(game, logfile)
 
+    # place second settlement and road for each player in reversed order
     for player_name in reversed(order):
         player = players[player_name]
         print(player_name, "picking a second initial settlement")
-        state = [settlements, cities, victory_points, resource_cards, rolled_on_turn]
-        location = player.pick_initial_location(game)
-        settlements.append([location, player])
-        action = "START"
-        reward = 1
-        victory_points[player] += reward
-        next_state = [settlements, cities, victory_points, resource_cards, rolled_on_turn]
-        f.write(state + "," + action + "," + reward + "," + next_state)
-    f.close()
+        player.pick_initial_location(game, logfile)
 
-    
+def continue_play(game, order, players, logfile):
+    """
+    Handles standard gameplay loop of roll->trade->build. For now, trade is abstracted out from the loop.
 
-
-def continue_play(game, order, players):
+    :param game: CatanGame instance
+    :param order: order in which players play
+    :param players: dictionary containing all player objects implementing standard player API
+    :param logfile: file to log optional output in
+    """
     while True:
+        # TODO: For now, infinite loop. Eventually break once a player has the desired win condition (probably 5 points)
+        # note for Sandy: point checks can be done via game.players[player_name].get_VP()
         for player_name in order:
-            rolled = False
-            card_played = False
-            building = False
+            # give each player all information necessary to make a decision
+            rolled = False # if the player has rolled this turn (means they can't roll again but can now build)
+            card_played = False # if the player has played a dev card this turn (means they can't play another)
+            building = False # if the player has begun to build this turn (means they can't trade or play cards this turn)
             player = players[player_name]
             print(player_name, "playing turn")
             while True:
-                action = player.play_turn(game, rolled, card_played, building)
-                state = [settlements, cities, victory_points, resource_cards, rolled_on_turn]
-                if action[0] == "ROLL":
+                # let player continue playing turn until they decide to end it
+                action = player.get_turn_action(game, rolled, card_played, building, logfile)
+                retval = 2 # return value from game performing given action for debugging purposes
+                if action == "ROLL":
+                    # if the player rolled, get a random number (prevent 7 for simplicity) and payout money
                     roll = game.get_roll()
-                    game.add_yield_for_roll(roll)
+                    while roll == 7:
+                        roll = game.get_roll()
                     print("Rolled a", roll)
+                    game.add_yield_for_roll(roll)
                     rolled = True
-                    ###################################################################
-                    #THIS IS A TRICKY TRACKY THING WHERE WE NEED TO SEE RESOURCE CARDS#
-                    ###################################################################
-                    rolled_on_turn = True
-                # elif action[0] == 'P':
-                #     # playing a dev card
-                #     args = list(action[1:])
-                #     game.use_dev_card(player.player, args[0], args[1:])
-                #     card_played = True
                 elif action[0] == 'R':
                     # building a road
                     args = list(action[1:])
-                    game.add_road(player.player, args[0], args[1])
-                    building = True
+                    retval = game.add_road(player.player, args[0], args[1])
+                    building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 elif action[0] == 'S':
                     # building a settlement
                     args = list(action[1:])
-                    game.add_settlement(player.player, args[0], args[1])
-                    building = True
+                    retval = game.add_settlement(player.player, args[0], args[1])
+                    building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 elif action[0] == 'C':
                     # building a city
                     args = list(action[1:])
-                    game.add_city(args[0], args[1], player.player)
-                    building = True
-               # elif action[0] == 'D':
-               #    # building a development card
-               #      game.build_dev(player.player)
-               #      building = True
-               #  elif action[0] == 'T':
-               #      # trading
-               #      args = list(action[1:])
-               #      tradee = args[0]
-               #      trader_send_cards = args[1]
-               #      trader_receive_cards = args[2]
-               #      for other in players:
-               #          if other.player == tradee and other.review_trade(game, trader_receive_cards, trader_send_cards):
-               #              # if other player accepted, perform trade
-               #              game.trade(player.player, tradee, trader_send_cards, trader_receive_cards)
+                    retval = game.add_city(args[0], args[1], player.player)
+                    building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 # elif action[0] == 'B':
                 #     # trade cards into bank (counts as building)
                 #     args = list(action[1:])
                 #     toss_cards = args[0]
                 #     gain_card = args[1]
                 #     game.trade_to_bank(player.player, toss_cards, gain_card)
+                #     building = true
                 elif action[0] == 'E':
+                    # user is ending turn
                     break
                 else:
+                    # user's action is unrecognized, do nothing
                     print("UNRECOGNIZED ACTION:", action)
+                    continue
+                print("Action resulted in retval:", retval)
 
-def play_game(player_num, bots_types):
-    game = CatanGame(player_num + len(bots_types))
-    order = []
+def play_game(player_types):
+    """
+    Main function to handle starting a game and initializing players.
+
+    :param player_types: Types of the players as set in main.py
+    """
+    game = CatanGame(2)
+    order = ["Red", "Blue"]
 
     index = 0
     players = {}
-    for player_id in range(player_num):
-        player_name = "Player" + str(player_id)
-        players[player_name] = User(game.board, index, player_name)
-        order.append(player_name)
+    for player_type in player_types:
+        if player_type == "Random":
+            players[order[index]] = RandomBot(game, index, order[index])
+        elif player_type == "RL":
+            # TODO: replace below constructor with RLBot constructor
+            players[order[index]] = RandomBot(game, index, order[index])
+        elif player_type == "OP":
+            # TODO: replace below constructor with OnlinePlanningBot constructor
+            players[order[index]] = RandomBot(game, index, order[index])
+        else:
+            # replace with a human otherwise
+            players[order[index]] = User(game, index, order[index])
         index += 1
-    bots = {}
-    for bot_id in range(len(bots_types)):
-        bot_type = bots_types[bot_id]
-        bot_name = bot_type + str(bot_id)
-        if bot_type == "Random" or bot_type == "Random2":
-            # players[bot_name] = RandomBot(game.board, index, player_name)
-            # Assuming player num = 0 because otherwise, player_name is undefined. 
-            players[bot_name] = RandomBot(game.board, index, "player_name")
-        order.append(bot_name)
-        index += 1
-    random.shuffle(order)
-    begin_play(game, order, players)
-    continue_play(game, order, players)
+
+    logfile = open('storage.csv', "w")
+    begin_play(game, order, players, logfile)
+    continue_play(game, order, players, logfile)
 
 
