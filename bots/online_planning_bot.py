@@ -98,6 +98,11 @@ class OnlinePlanningBot:
             sys.exit("INVALID LOCATION PICKED FOR INITIAL SETTLEMENT, FIX ME")
             
     def update_resources(self, state, action): 
+        if action == 'C':
+            state[1][3] -= 2
+            state[1][4] -= 3
+            return state
+
         state[1][0] -= 1 # brick 
         state[1][1] -= 1 # wood 
         if action == 'S': 
@@ -106,6 +111,10 @@ class OnlinePlanningBot:
         return state
 
     def restore_resources(self, state, action): 
+        if action == 'C':
+            state[1][3] += 2
+            state[1][4] += 3
+            return state
         state[1][0] += 1 # brick 
         state[1][1] += 1 # wood 
         if action == 'S': 
@@ -118,7 +127,7 @@ class OnlinePlanningBot:
     # state[1] : resource_cards 
     # state[2] : rolled 
     def lookahead(self, game, state, board, card_played, building, depth): 
-        #print("DOING LOOKAHEAD AT DEPTH ", depth)
+        print("DOING LOOKAHEAD AT DEPTH ", depth, "AND STATE IS ", state)
         if depth == 0: 
             #print("AT DEPTH 0 AND OUR STATE IS", state)
             #print("GOING TO RETURN E")
@@ -158,6 +167,23 @@ class OnlinePlanningBot:
                         state[2] = False
                         expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
                         board.points[settlement[0]][settlement[1]] = None 
+                        state = self.restore_resources(state, action[0])
+                        if expected_val >= best_val: 
+                            best_val = expected_val
+                            best_action = action
+                elif action[0] == 'C': 
+                    if state[0] == 4: 
+                        expected_val = 10
+                    else:
+                        print("WE ARE IN CITIES")
+                        city = action[1] # settlment coordinate 
+                        simulated_city = CatanBuilding(self.player_id, CatanBuilding.BUILDING_CITY)
+                        board.points[city[0]][city[1]] = simulated_city
+                        state[0] += 1
+                        state = self.update_resources(state, action[0])
+                        state[2] = False
+                        expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                        board.points[city[0]][city[1]] = CatanBuilding(self.player_id, CatanBuilding.BUILDING_SETTLEMENT) 
                         state = self.restore_resources(state, action[0])
                         if expected_val >= best_val: 
                             best_val = expected_val
@@ -246,6 +272,11 @@ class OnlinePlanningBot:
                 # append all settlement locations
                 for settlement in board_parser.get_settlement_locations(game.board, self.player_id):
                     actions.append(["S", settlement])
+
+            if state[1][3] >= 2 and state[1][4] >= 3:
+                # append all city locations
+                for city in board_parser.get_city_locations(game.board, self.player_id):
+                    actions.append(["C", city])
             # if player_cards.count(CatanCards.CARD_WHEAT) >= 2 and player_cards.count(CatanCards.CARD_ORE) >= 3:
             #     # append all city locations
             #     for city in board_parser.get_city_locations(game.board, self.player_id):
@@ -275,9 +306,11 @@ class OnlinePlanningBot:
         if not rolled:
             return ["ROLL"] 
         
-        depth = 4
+        depth = 8
+        best_v = self.lookahead(game, state, game.board, card_played, building, depth)[0]
         best_a = self.lookahead(game, state, game.board, card_played, building, depth)[1]
         print("ABOUT TO RETURN FOR THE LAST TIME AND OUR BEST ACTION IS", best_a)
+        print("ABOUT TO LAST RETURN AND OUR BEST VALUE IS ", best_v)
         return best_a
 
     def review_trade(self, game, requested, rewards):
