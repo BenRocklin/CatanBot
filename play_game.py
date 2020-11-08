@@ -1,7 +1,10 @@
 from bots.random_bot import RandomBot
 from user_play import User
 
+from draw_board import draw_board
 from PyCatan import CatanBoard, CatanBuilding, CatanCards, CatanGame, CatanPlayer, CatanStatuses
+import numpy as np
+import random, sys
 
 """
 Catan controller to maintain game. All code should be RL-agnostic (that is, all code related to states/actions/models
@@ -12,9 +15,8 @@ def add_yield_for_roll(game, roll):
     """
     Bug-free version to add dice roll yields.
 
-    :param game:
-    :param roll:
-    :return:
+    :param game: CatanGame instance
+    :param roll: the roll to use
     """
     board = game.board
     for r in range(len(board.points)):
@@ -57,7 +59,15 @@ def add_yield_for_roll(game, roll):
                     except:
                         print("INVALID HEX, SKIPPING")
 
-def begin_play(game, order, players, logfile):
+def get_roll():
+    """
+    Bug-free implementation of fetching a random roll of two six-sided dice.
+
+    :return: a random dice roll between 2 and 12
+    """
+    return int(np.ceil(random.random() * 6)) + int(np.ceil(random.random() * 6))
+
+def begin_play(game, order, players, logfile, board_view):
     """
     Handles initial input for the first two settlements for all players. For now, do not award cards placed
     on initial settlement.
@@ -66,20 +76,25 @@ def begin_play(game, order, players, logfile):
     :param order: the order in which the players play
     :param players: dictionary containing all player objects implementing standard player API
     :param logfile: file to log optional output in
+    :param board_view: matplotlib plot of the board
     """
     # place first settlement and road for each player
     for player_name in order:
         player = players[player_name]
         print(player_name, "picking an initial settlement")
         player.pick_initial_location(game, logfile)
+        if board_view:
+            board_view = draw_board(game, board_view)
 
     # place second settlement and road for each player in reversed order
     for player_name in reversed(order):
         player = players[player_name]
         print(player_name, "picking a second initial settlement")
         player.pick_initial_location(game, logfile)
+        if board_view:
+            board_view = draw_board(game, board_view)
 
-def continue_play(game, order, players, logfile):
+def continue_play(game, order, players, logfile, board_view):
     """
     Handles standard gameplay loop of roll->trade->build. For now, trade is abstracted out from the loop.
 
@@ -87,6 +102,7 @@ def continue_play(game, order, players, logfile):
     :param order: order in which players play
     :param players: dictionary containing all player objects implementing standard player API
     :param logfile: file to log optional output in
+    :param board_view: matplotlib plot of the board
     """
     while True:
         # TODO: For now, infinite loop. Eventually break once a player has the desired win condition (probably 5 points)
@@ -106,16 +122,14 @@ def continue_play(game, order, players, logfile):
                     # if the player rolled, get a random number (prevent 7 for simplicity) and payout money
                     roll = game.get_roll()
                     while roll == 7:
-                        roll = game.get_roll()
+                        roll = get_roll()
                     print("Rolled a", roll)
                     add_yield_for_roll(game, roll)
                     rolled = True
                 elif action[0] == 'R':
                     # building a road
                     args = action[1]
-                    print(args)
                     retval = game.add_road(player.player_id, args[0], args[1])
-                    print("ROAD BUILT")
                     building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 elif action[0] == 'S':
                     # building a settlement
@@ -141,25 +155,34 @@ def continue_play(game, order, players, logfile):
                     # user's action is unrecognized, do nothing
                     print("UNRECOGNIZED ACTION:", action)
                     continue
+                if board_view:
+                    board_view = draw_board(game, board_view)
                 print("Action resulted in retval:", retval)
 
-def play_game(player_types):
+def setup_valid_game():
+    """
+    Fixes a buggy board setup that triggers on an edge condition in CatanGame
+
+    :return: a valid game instance with a functional board
+    """
+    valid = False
+    game = None
+    while not valid:
+        game = CatanGame(2)
+        hexes = game.board.hex_nums
+        if len(hexes[0]) == 3 and len(hexes[1]) == 4 and len(hexes[2]) == 5 and len(hexes[3]) == 4 and len(hexes[4]) == 3:
+            valid = True
+    return game
+
+def play_game(player_types, show_game):
     """
     Main function to handle starting a game and initializing players.
 
     :param player_types: Types of the players as set in main.py
+    :param show_game: whether or not to display the game in a plot or not
     """
-    game = CatanGame(2)
+    game = setup_valid_game()
     order = ["Red", "Blue"]
-
-    print(game.board.hex_nums)
-    print(game.board.points)
-    print(game.board.hexes)
-    for r in range(len(game.board.points)):
-        for i in range(len(game.board.points[r])):
-            print(r, i)
-            hex_indexes = game.board.get_hexes_for_point(r, i)
-            print(hex_indexes)
 
     index = 0
     players = {}
@@ -178,7 +201,10 @@ def play_game(player_types):
         index += 1
 
     logfile = open('storage.csv', "w")
-    begin_play(game, order, players, logfile)
-    continue_play(game, order, players, logfile)
+    board_view = None
+    if show_game:
+        board_view = draw_board(game, board_view)
+    begin_play(game, order, players, logfile, board_view)
+    continue_play(game, order, players, logfile, board_view)
 
 
