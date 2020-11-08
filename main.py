@@ -5,12 +5,12 @@ from play_game import play_game
 player_types = ["Human", "Random", "RL", "OP"]
 
 def main():
-    show_game = True
+    show_game = False
     # assign the below two to either "Human", "Random", "RL", or "OP"
     # note: RL will be for the reinforcement learning bot, OP will be for the online planning bot
     # red player will always be the first player for simplicity right now, this may change in the future
     # TODO: change the below to be command line args instead of explicit red/blue
-    red_player = "Human"
+    red_player = "OP"
     if red_player not in player_types:
         sys.exit("Improper player type for player red, exiting.")
     blue_player = "Random"

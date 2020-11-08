@@ -1,4 +1,5 @@
 from bots.random_bot import RandomBot
+from bots.online_planning_bot import OnlinePlanningBot
 from user_play import User
 
 from draw_board import draw_board
@@ -194,13 +195,13 @@ def play_game(player_types, show_game):
             players[order[index]] = RandomBot(game, index, order[index])
         elif player_type == "OP":
             # TODO: replace below constructor with OnlinePlanningBot constructor
-            players[order[index]] = RandomBot(game, index, order[index])
+            players[order[index]] = OnlinePlanningBot(game, index, order[index])
         else:
             # replace with a human otherwise
             players[order[index]] = User(game, index, order[index])
         index += 1
 
-    logfile = open('storage.csv', "w")
+    logfile = ""
     board_view = None
     if show_game:
         board_view = draw_board(game, board_view)
