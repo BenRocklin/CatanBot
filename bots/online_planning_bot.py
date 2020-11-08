@@ -1,7 +1,8 @@
 import board_parser
 import random
 import sys
-from PyCatan import CatanCards
+
+from PyCatan import CatanCards, CatanBuilding
 import play_game
 
 class OnlinePlanningBot:
@@ -99,19 +100,31 @@ class OnlinePlanningBot:
             state[1][2] -= 1 # sheep 
             state[1][3] -= 1 # wheat 
         return state
+
+    def restore_resources(self, state, action): 
+        state[1][0] += 1 # brick 
+        state[1][1] += 1 # wood 
+        if action == 'S': 
+            state[1][2] += 1 # sheep 
+            state[1][3] += 1 # wheat 
+        return state
     
     # state -> [victory_points, resource_cards, rolled]
     # state[0]: victory_points 
     # state[1] : resource_cards 
     # state[2] : rolled 
     def lookahead(self, game, state, board, card_played, building, depth): 
+        print("DOING LOOKAHEAD AT DEPTH ", depth)
         if depth == 0: 
-            return 0
-        actions = self.get_possible_actions(game, state, state[2], card_played, building)
+            print("AT DEPTH 0 AND OUR STATE IS", state)
+            print("GOING TO RETURN E")
+            return 0, "E"
         best_val = 0
         best_action = "E"
         
         if state[2]: 
+            actions = self.get_possible_actions(game, state, state[2], card_played, building)
+#            print("ACTIONS ARE", actions)
             for action in actions: 
                 if action[0] == 'R': 
                     roads = action[1]
@@ -123,6 +136,7 @@ class OnlinePlanningBot:
                     state[2] = False
                     expected_val = 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
                     board.roads.pop()
+                    state = self.restore_resources(state, action[0])
                     if expected_val > best_val:
                         best_action = action
                         best_val = expected_val
@@ -138,6 +152,7 @@ class OnlinePlanningBot:
                         state[2] = False
                         expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
                         board.points[settlement[0]][settlement[1]] = None 
+                        state = self.restore_resources(state, action[0])
                     if expected_val > best_val: 
                         best_val = expected_val
                         best_action = action
@@ -176,6 +191,7 @@ class OnlinePlanningBot:
             return 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0], "ROLL"
                 
     def get_possible_actions(self, game, state, rolled, card_played, building):
+        print("OUR STATE IS", state)
         """
         Return all possible actions
 
@@ -204,10 +220,12 @@ class OnlinePlanningBot:
         else:
             # if player has rolled, doesn't have to do anything else, can end turn, can also now build
             actions.append(["E"])
+            player_obj = game.players[self.player_id]
             if not building:
                 # don't have to roll, can opt to trade (have random bot not trade at all yet)
                 pass
             if state[1][0] >= 1 and state[1][1] >= 1:
+            #if True:
                 # append all road building locations
                 for road in board_parser.get_road_locations(game.board, player_obj, self.player_id):
                     actions.append(["R", road])
