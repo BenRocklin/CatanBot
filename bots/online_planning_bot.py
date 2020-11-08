@@ -155,39 +155,42 @@ class OnlinePlanningBot:
                         best_action = action
                         best_val = expected_val
                 elif action[0] == 'S': 
-                    if state[0] == 4: 
-                        expected_val = 10
-                    else:
-                        print("WE ARE IN SETTLEMENTS")
-                        settlement = action[1] # settlment coordinate 
-                        simulated_settlement = CatanBuilding(self.player_id, CatanBuilding.BUILDING_SETTLEMENT)
-                        board.points[settlement[0]][settlement[1]] = simulated_settlement
-                        state[0] += 1
-                        state = self.update_resources(state, action[0])
-                        state[2] = False
-                        expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
-                        board.points[settlement[0]][settlement[1]] = None 
-                        state = self.restore_resources(state, action[0])
-                        if expected_val >= best_val: 
-                            best_val = expected_val
-                            best_action = action
+                    
+
+                    print("WE ARE IN SETTLEMENTS")
+                    settlement = action[1] # settlment coordinate 
+                    simulated_settlement = CatanBuilding(self.player_id, CatanBuilding.BUILDING_SETTLEMENT)
+                    board.points[settlement[0]][settlement[1]] = simulated_settlement
+                    state[0] += 1
+                    state = self.update_resources(state, action[0])
+                    state[2] = False
+                    #if state[0] == 4: 
+                    #    expected_val = 10
+                    #else:
+                    expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                    board.points[settlement[0]][settlement[1]] = None 
+                    state = self.restore_resources(state, action[0])
+                    if expected_val >= best_val: 
+                        best_val = expected_val
+                        best_action = action
                 elif action[0] == 'C': 
-                    if state[0] == 4: 
-                        expected_val = 10
-                    else:
-                        print("WE ARE IN CITIES")
-                        city = action[1] # settlment coordinate 
-                        simulated_city = CatanBuilding(self.player_id, CatanBuilding.BUILDING_CITY)
-                        board.points[city[0]][city[1]] = simulated_city
-                        state[0] += 1
-                        state = self.update_resources(state, action[0])
-                        state[2] = False
-                        expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
-                        board.points[city[0]][city[1]] = CatanBuilding(self.player_id, CatanBuilding.BUILDING_SETTLEMENT) 
-                        state = self.restore_resources(state, action[0])
-                        if expected_val >= best_val: 
-                            best_val = expected_val
-                            best_action = action
+                
+                    print("WE ARE IN CITIES")
+                    city = action[1] # settlment coordinate 
+                    simulated_city = CatanBuilding(self.player_id, CatanBuilding.BUILDING_CITY)
+                    board.points[city[0]][city[1]] = simulated_city
+                    state[0] += 1
+                    state = self.update_resources(state, action[0])
+                    state[2] = False
+                    #if state[0] == 4: 
+                    #    expected_val = 10
+                    #else:
+                    expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                    board.points[city[0]][city[1]] = CatanBuilding(self.player_id, CatanBuilding.BUILDING_SETTLEMENT) 
+                    state = self.restore_resources(state, action[0])
+                    if expected_val >= best_val: 
+                        best_val = expected_val
+                        best_action = action
             #print("ABOUT TO RETURN FOR ROLLED = TRUE")
             print("OUR BEST VALUE IS", best_val)
             return best_val, best_action
