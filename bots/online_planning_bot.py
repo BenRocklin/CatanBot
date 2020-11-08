@@ -79,7 +79,11 @@ class OnlinePlanningBot:
 
         # pick a random settlement location
         settlement_locations = board_parser.get_initial_settlement_locations(board)
-        chosen_location = random.choice(settlement_locations)
+        while True:
+            chosen_location = random.choice(settlement_locations)
+            if (chosen_location[0] != 0 and chosen_location[0] != 5 and chosen_location[1] != 0 and chosen_location[1] != 11):
+                break
+        
         retval = game.add_settlement(self.player_id, chosen_location[0], chosen_location[1], True)
         print(self.name, "placed settlement in location:", chosen_location, "with retval", retval)
         if retval != 2:
@@ -114,10 +118,10 @@ class OnlinePlanningBot:
     # state[1] : resource_cards 
     # state[2] : rolled 
     def lookahead(self, game, state, board, card_played, building, depth): 
-        print("DOING LOOKAHEAD AT DEPTH ", depth)
+        #print("DOING LOOKAHEAD AT DEPTH ", depth)
         if depth == 0: 
-            print("AT DEPTH 0 AND OUR STATE IS", state)
-            print("GOING TO RETURN E")
+            #print("AT DEPTH 0 AND OUR STATE IS", state)
+            #print("GOING TO RETURN E")
             return 0, "E"
         best_val = 0
         best_action = "E"
@@ -127,6 +131,7 @@ class OnlinePlanningBot:
 #            print("ACTIONS ARE", actions)
             for action in actions: 
                 if action[0] == 'R': 
+                    print("WE ARE IN ROADS")
                     roads = action[1]
                     pt1 = roads[0]
                     pt2 = roads[1]
@@ -137,13 +142,14 @@ class OnlinePlanningBot:
                     expected_val = 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
                     board.roads.pop()
                     state = self.restore_resources(state, action[0])
-                    if expected_val > best_val:
+                    if expected_val >= best_val:
                         best_action = action
                         best_val = expected_val
                 elif action[0] == 'S': 
                     if state[0] == 4: 
                         expected_val = 10
                     else:
+                        print("WE ARE IN SETTLEMENTS")
                         settlement = action[1] # settlment coordinate 
                         simulated_settlement = CatanBuilding(self.player_id, CatanBuilding.BUILDING_SETTLEMENT)
                         board.points[settlement[0]][settlement[1]] = simulated_settlement
@@ -153,9 +159,11 @@ class OnlinePlanningBot:
                         expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
                         board.points[settlement[0]][settlement[1]] = None 
                         state = self.restore_resources(state, action[0])
-                    if expected_val > best_val: 
-                        best_val = expected_val
-                        best_action = action
+                        if expected_val >= best_val: 
+                            best_val = expected_val
+                            best_action = action
+            #print("ABOUT TO RETURN FOR ROLLED = TRUE")
+            print("OUR BEST VALUE IS", best_val)
             return best_val, best_action
         else: 
             # call lookahead 10 times and weigh based on how likely it'll happen 
@@ -188,7 +196,12 @@ class OnlinePlanningBot:
                 
             state = self.add_yield_for_roll(game, dice_sum, state)
             state[2] = True
+            #print("ABOUT TO RETURN FOR ROLL = FALSE")
             return 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0], "ROLL"
+
+
+
+
                 
     def get_possible_actions(self, game, state, rolled, card_played, building):
         print("OUR STATE IS", state)
@@ -248,7 +261,8 @@ class OnlinePlanningBot:
         return actions
     
     def get_turn_action(self, game, rolled, card_played, building, logfile): 
-        state = [0, [0, 0, 0, 0, 0], False]
+        state = [0, [0, 0, 0, 0, 0], rolled]
+        
         state[0] = game.players[self.player_id].get_VP()
         player_obj = game.players[self.player_id]
         player_cards = player_obj.cards
@@ -257,11 +271,14 @@ class OnlinePlanningBot:
         state[1][2] = player_cards.count(CatanCards.CARD_SHEEP)
         state[1][3] = player_cards.count(CatanCards.CARD_WHEAT)
         state[1][4] = player_cards.count(CatanCards.CARD_ORE)
+        #state = [0, [10, 10, 10, 10, 10], rolled]
         if not rolled:
             return ["ROLL"] 
         
         depth = 4
-        return [self.lookahead(game, state, game.board, card_played, building, depth)[1]]
+        best_a = self.lookahead(game, state, game.board, card_played, building, depth)[1]
+        print("ABOUT TO RETURN FOR THE LAST TIME AND OUR BEST ACTION IS", best_a)
+        return best_a
 
     def review_trade(self, game, requested, rewards):
         # randomly accept the trade
