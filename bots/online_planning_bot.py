@@ -5,6 +5,8 @@ import sys
 from PyCatan import CatanCards, CatanBuilding
 import play_game
 
+discount = 0.75
+
 class OnlinePlanningBot:
     def __init__(self, game, player_id, name):
         """
@@ -121,6 +123,33 @@ class OnlinePlanningBot:
             state[1][2] += 1 # sheep 
             state[1][3] += 1 # wheat 
         return state
+
+    def roll_dice(self):
+        rand30 = random.randint(1, 30)
+        dice_sum = 2
+        if rand30 == 1: 
+            dice_sum = 2
+        elif rand30 == 2 or rand30 == 3:
+            dice_sum = 3
+        elif rand30 <= 6:
+            dice_sum = 4
+        elif rand30 <= 10:
+            dice_sum = 5
+        elif rand30 <= 15:
+            dice_sum = 6
+        elif rand30 <= 20:
+            dice_sum = 8
+        elif rand30 <= 24:
+            dice_sum = 9
+        elif rand30 <= 27:
+            dice_sum = 10
+        elif rand30 <= 29:
+            dice_sum = 11
+        else:
+            dice_sum = 12
+
+        return dice_sum
+
     
     # state -> [victory_points, resource_cards, rolled]
     # state[0]: victory_points 
@@ -129,7 +158,7 @@ class OnlinePlanningBot:
     def lookahead(self, game, state, board, card_played, building, depth): 
         print("DOING LOOKAHEAD AT DEPTH ", depth, "AND STATE IS ", state)
         if depth == 0: 
-            #print("AT DEPTH 0 AND OUR STATE IS", state)
+            print("AT DEPTH 0 AND OUR STATE IS", state)
             #print("GOING TO RETURN E")
             return 0, "E"
         best_val = 0
@@ -137,20 +166,33 @@ class OnlinePlanningBot:
         
         if state[2]: 
             actions = self.get_possible_actions(game, state, state[2], card_played, building)
-#            print("ACTIONS ARE", actions)
+            
+            print("ACTIONS ARE", actions, "FOR DEPTH", depth, "AND STATE", state)
             for action in actions: 
                 if action[0] == 'R': 
-                    print("WE ARE IN ROADS")
+                    print("WE ARE IN ROADS FOR DEPTH ", depth, "AND OUR STATE IS ", state)
                     roads = action[1]
                     pt1 = roads[0]
                     pt2 = roads[1]
                     simulated_road = CatanBuilding(self.player_id, CatanBuilding.BUILDING_ROAD, pt1, pt2)
                     board.roads.append(simulated_road)
+                    print("BEFORE STATE COPY THE ROAD OUR STATE IS ", state)
+                    #### CREATE NEW STATE
+                    #state_copy = state
+                    #state_copy = self.update_resources(state_copy, action[0])
+                    #state_copy[2] = False
+                    ###MODIFY STATE
                     state = self.update_resources(state, action[0])
                     state[2] = False
-                    expected_val = 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
-                    board.roads.pop()
+                    ###PERFOREM RECURSION
+                    print("AFTER STATE COPY THE ROAD OUR STATE IS ", state)
+                    expected_val = 0.1 + discount * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                    ###RESTORE PREVIOUS STATE
                     state = self.restore_resources(state, action[0])
+                    state[2] = True
+                    
+                    board.roads.pop()
+                    
                     if expected_val >= best_val:
                         best_action = action
                         best_val = expected_val
@@ -161,38 +203,57 @@ class OnlinePlanningBot:
                     settlement = action[1] # settlment coordinate 
                     simulated_settlement = CatanBuilding(self.player_id, CatanBuilding.BUILDING_SETTLEMENT)
                     board.points[settlement[0]][settlement[1]] = simulated_settlement
-                    state[0] += 1
+                    ### MODIFY STATE
                     state = self.update_resources(state, action[0])
                     state[2] = False
-                    #if state[0] == 4: 
-                    #    expected_val = 10
-                    #else:
-                    expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
-                    board.points[settlement[0]][settlement[1]] = None 
+                    state[0] = state[0] + 1
+                    ###PERFORM RECURSION
+                    expected_val = 1 + discount * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                    ###RESTORE PREVIOUS STATE
                     state = self.restore_resources(state, action[0])
+                    state[2] = True
+                    state[0] -= 1
+
+                    board.points[settlement[0]][settlement[1]] = None 
                     if expected_val >= best_val: 
                         best_val = expected_val
                         best_action = action
                 elif action[0] == 'C': 
                 
                     print("WE ARE IN CITIES")
-                    city = action[1] # settlment coordinate 
+                    city = action[1] # CITY coordinate 
                     simulated_city = CatanBuilding(self.player_id, CatanBuilding.BUILDING_CITY)
                     board.points[city[0]][city[1]] = simulated_city
-                    state[0] += 1
+                    #### MODIFY STATE
                     state = self.update_resources(state, action[0])
                     state[2] = False
-                    #if state[0] == 4: 
-                    #    expected_val = 10
-                    #else:
-                    expected_val = 1 + 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                    state[0] = state[0] + 1
+                    ###PERFORM RECURSION
+                    expected_val = 1 + discount * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                    ###RESTORE PREVIOUS STATE
                     board.points[city[0]][city[1]] = CatanBuilding(self.player_id, CatanBuilding.BUILDING_SETTLEMENT) 
+                    state[0] -= 1
                     state = self.restore_resources(state, action[0])
+                    state[2] = True
                     if expected_val >= best_val: 
                         best_val = expected_val
                         best_action = action
+
+                elif action[0] == 'E': 
+                    print("WE ARE IN E")
+                    
+
+                    #### MODIFY STATE
+                    state[2] = False
+                    ###PERFORM RECURSION
+                    expected_val = discount * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                    state[2] = True
+                    if expected_val >= best_val: 
+                        best_val = expected_val
+                        best_action = action  
             #print("ABOUT TO RETURN FOR ROLLED = TRUE")
-            print("OUR BEST VALUE IS", best_val)
+            if(best_val > 0.00001):
+                print("OUR BEST VALUE FOR DEPTH ", depth, " IS ", best_val)
             return best_val, best_action
         else: 
             # call lookahead 10 times and weigh based on how likely it'll happen 
@@ -200,33 +261,48 @@ class OnlinePlanningBot:
             # pick a random num from dist 2-6 or 8-11 
             # assume that number and and call lookahead 
             # pick a random number between one and 36. if num is 1 -> correspond to 
-            rand30 = random.randint(1, 30)
-            dice_sum = 2
-            if rand30 == 1: 
-                dice_sum = 2
-            elif rand30 == 2 or rand30 == 3:
-                dice_sum = 3
-            elif rand30 <= 6:
-                dice_sum = 4
-            elif rand30 <= 10:
-                dice_sum = 5
-            elif rand30 <= 15:
-                dice_sum = 6
-            elif rand30 <= 20:
-                dice_sum = 8
-            elif rand30 <= 24:
-                dice_sum = 9
-            elif rand30 <= 27:
-                dice_sum = 10
-            elif rand30 <= 29:
-                dice_sum = 11
-            else:
-                dice_sum = 12
-                
-            state = self.add_yield_for_roll(game, dice_sum, state)
+
+            #dice_sum = self.roll_dice()
+            prob_sum = 0
             state[2] = True
+            state_2 = self.add_yield_for_roll(game, 2, state)
+            prob_sum += 0.033 * self.lookahead(game, state_2, board, card_played, building, depth - 1)[0]
+            print("DEPTH AFTER 2 IS", depth)
+
+            state_3 = self.add_yield_for_roll(game, 3, state)
+            prob_sum += 0.067 * self.lookahead(game, state_3, board, card_played, building, depth - 1)[0]
+            print("DEPTH AFTER 3 IS", depth)
+            state_4 = self.add_yield_for_roll(game, 4, state)
+            prob_sum += 0.1 * self.lookahead(game, state_4, board, card_played, building, depth - 1)[0]
+            print("DEPTH AFTER 4 IS", depth)
+            state_5 = self.add_yield_for_roll(game, 5, state)
+            prob_sum += 0.133 * self.lookahead(game, state_5, board, card_played, building, depth - 1)[0]
+
+            state_6 = self.add_yield_for_roll(game, 6, state)
+            prob_sum += 0.167 * self.lookahead(game, state_6, board, card_played, building, depth - 1)[0]
+
+            state_8 = self.add_yield_for_roll(game, 8, state)
+            prob_sum += 0.167 * self.lookahead(game, state_8, board, card_played, building, depth - 1)[0]
+
+            state_9 = self.add_yield_for_roll(game, 9, state)
+            prob_sum += 0.133 * self.lookahead(game, state_9, board, card_played, building, depth - 1)[0]
+
+            state_10 = self.add_yield_for_roll(game, 10, state)
+            prob_sum += 0.1 * self.lookahead(game, state_10, board, card_played, building, depth - 1)[0]
+
+            state_11 = self.add_yield_for_roll(game, 11, state)
+            prob_sum += 0.067 * self.lookahead(game, state_11, board, card_played, building, depth - 1)[0]
+
+            state_12 = self.add_yield_for_roll(game, 12, state)
+            prob_sum += 0.033 * self.lookahead(game, state_12, board, card_played, building, depth - 1)[0]
+
+            #state = self.add_yield_for_roll(game, dice_sum, state)
+            
             #print("ABOUT TO RETURN FOR ROLL = FALSE")
-            return 0.99 * self.lookahead(game, state, board, card_played, building, depth - 1)[0], "ROLL"
+            #return discount * self.lookahead(game, state, board, card_played, building, depth - 1)[0], "ROLL"
+            if prob_sum > 0:
+                print("OUR PROB SUM IS ", prob_sum)
+            return discount * prob_sum, "ROLL"
 
 
 
@@ -309,10 +385,10 @@ class OnlinePlanningBot:
         if not rolled:
             return ["ROLL"] 
         
-        depth = 8
+        depth = 5
         best_v = self.lookahead(game, state, game.board, card_played, building, depth)[0]
         best_a = self.lookahead(game, state, game.board, card_played, building, depth)[1]
-        print("ABOUT TO RETURN FOR THE LAST TIME AND OUR BEST ACTION IS", best_a)
+        print("ABOUT TO RETURN FOR THE LAST TIME AND OUR BEST ACTION IS", best_a, "AND OUR STATE IS", state)
         print("ABOUT TO LAST RETURN AND OUR BEST VALUE IS ", best_v)
         return best_a
 

@@ -5,7 +5,7 @@ from play_game import play_game
 player_types = ["Human", "Random", "RL", "OP"]
 
 def main():
-    show_game = False
+    show_game = True
     # assign the below two to either "Human", "Random", "RL", or "OP"
     # note: RL will be for the reinforcement learning bot, OP will be for the online planning bot
     # red player will always be the first player for simplicity right now, this may change in the future

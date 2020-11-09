@@ -95,6 +95,14 @@ def begin_play(game, order, players, logfile, board_view):
         if board_view:
             board_view = draw_board(game, board_view)
 
+    # place third settlement and road for each player in reversed order
+    for player_name in reversed(order):
+        player = players[player_name]
+        print(player_name, "picking a third initial settlement")
+        player.pick_initial_location(game, logfile)
+        if board_view:
+            board_view = draw_board(game, board_view)
+
 def continue_play(game, order, players, logfile, board_view):
     """
     Handles standard gameplay loop of roll->trade->build. For now, trade is abstracted out from the loop.
@@ -130,6 +138,7 @@ def continue_play(game, order, players, logfile, board_view):
                 elif action[0] == 'R':
                     # building a road
                     args = action[1]
+                    print("ARGS ARE", args)
                     retval = game.add_road(player.player_id, args[0], args[1])
                     building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 elif action[0] == 'S':

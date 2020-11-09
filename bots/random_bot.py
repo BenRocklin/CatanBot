@@ -27,7 +27,10 @@ class RandomBot:
 
         # pick a random settlement location
         settlement_locations = board_parser.get_initial_settlement_locations(board)
-        chosen_location = random.choice(settlement_locations)
+        while True:
+            chosen_location = random.choice(settlement_locations)
+            if (chosen_location[0] != 0 and chosen_location[0] != 5 and chosen_location[1] != 0 and chosen_location[1] != 11):
+                break
         retval = game.add_settlement(self.player_id, chosen_location[0], chosen_location[1], True)
         print(self.name, "placed settlement in location:", chosen_location, "with retval", retval)
         if retval != 2:
