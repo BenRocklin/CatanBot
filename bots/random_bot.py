@@ -79,6 +79,16 @@ class RandomBot:
             if not building:
                 # don't have to roll, can opt to trade (have random bot not trade at all yet)
                 pass
+            card_mapping = [CatanCards.CARD_BRICK, CatanCards.CARD_WOOD, CatanCards.CARD_SHEEP, CatanCards.CARD_WHEAT, CatanCards.CARD_ORE]
+            trader = -1
+            tradee = -1
+            for i in range(0, 4):
+                if player_cards.count(card_mapping[i]) >= 6:
+                    trader = i
+                if player_cards.count(card_mapping[i]) == 0:
+                    tradee = i
+            if trader >= 0 and tradee >= 0:
+                actions.append(["T", trader, tradee])
             if player_cards.count(CatanCards.CARD_BRICK) >= 1 and player_cards.count(CatanCards.CARD_WOOD) >= 1:
                 # append all road building locations
                 for road in board_parser.get_road_locations(game.board, player_obj, self.player_id):

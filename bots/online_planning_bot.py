@@ -238,7 +238,24 @@ class OnlinePlanningBot:
                     if expected_val >= best_val: 
                         best_val = expected_val
                         best_action = action
-
+                elif action[0] == 'T': 
+                
+                    print("WE ARE IN TRADE")
+                    in_trade = action[1] 
+                    out_trade = action[2]
+                    #### MODIFY STATE
+                    state[1][in_trade] -= 4
+                    state[1][out_trade] += 1
+                    state[2] = False
+                    ###PERFORM RECURSION
+                    expected_val = discount * self.lookahead(game, state, board, card_played, building, depth - 1)[0]
+                    ###RESTORE PREVIOUS STATE
+                    state[1][in_trade] += 4
+                    state[1][out_trade] -= 1
+                    state[2] = True
+                    if expected_val >= best_val: 
+                        best_val = expected_val
+                        best_action = action
                 elif action[0] == 'E': 
                     print("WE ARE IN E")
                     
@@ -342,6 +359,16 @@ class OnlinePlanningBot:
             if not building:
                 # don't have to roll, can opt to trade (have random bot not trade at all yet)
                 pass
+            trader = -1
+            tradee = -1
+            for i in range(0, 4):
+                if state[1][i] >= 6:
+                    trader = i
+                if state[1][i] == 0:
+                    tradee = i
+            if trader >= 0 and tradee >= 0:
+                actions.append(["T", trader, tradee])
+
             if state[1][0] >= 1 and state[1][1] >= 1:
             #if True:
                 # append all road building locations

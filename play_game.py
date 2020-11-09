@@ -96,12 +96,13 @@ def begin_play(game, order, players, logfile, board_view):
             board_view = draw_board(game, board_view)
 
     # place third settlement and road for each player in reversed order
-    for player_name in reversed(order):
-        player = players[player_name]
-        print(player_name, "picking a third initial settlement")
-        player.pick_initial_location(game, logfile)
-        if board_view:
-            board_view = draw_board(game, board_view)
+    #ADDED HERE TO SIMPIFY THE GAME
+    #for player_name in reversed(order):
+     #   player = players[player_name]
+      #  print(player_name, "picking a third initial settlement")
+       # player.pick_initial_location(game, logfile)
+        #if board_view:
+         #   board_view = draw_board(game, board_view)
 
 def continue_play(game, order, players, logfile, board_view):
     """
@@ -151,6 +152,14 @@ def continue_play(game, order, players, logfile, board_view):
                     args = action[1]
                     retval = game.add_city(args[0], args[1], player.player_id)
                     building = True if (retval == 2) else building # only say we've built if the user chose a correct location
+                elif action[0] == 'T':
+                    # doing a trade
+                    card_mapping = [CatanCards.CARD_BRICK, CatanCards.CARD_WOOD, CatanCards.CARD_SHEEP, CatanCards.CARD_WHEAT, CatanCards.CARD_ORE]
+                    put_in = card_mapping[action[1]]
+                    in_trade = [put_in, put_in, put_in, put_in]
+                    out_trade = card_mapping[action[2]]
+                    retval = game.trade_to_bank(player.player_id, in_trade, out_trade)
+                    #building = True if (retval == 2) else building # only say we've built if the user chose a correct location
                 # elif action[0] == 'B':
                 #     # trade cards into bank (counts as building)
                 #     args = list(action[1:])
